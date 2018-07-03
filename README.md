@@ -6,3 +6,11 @@
 -To compile pc
 -gcc packetSniffer.c -o pc -lpcap
 -sudo ./pc sniff
+
+recently updated packetSniffer.c  has the following features
+1)output.txt is more organized  
+2) able to sniff UDP and TCP /IP packet 
+
+future updates
+1) working on command line  so program will act like tcpdump.
+
