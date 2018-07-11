@@ -14,3 +14,15 @@ recently updated packetSniffer.c  has the following features
 future updates
 1) working on command line  so program will act like tcpdump.
 
+Download libpcap-1.8.1  using the following steps
+-wget http://www.tcpdump.org/release/libpcap-1.8.1.tar.gz
+tar xvf libpcap-1.8.1.tar.gz
+cd libpcap-1.8.1
+
+Configuring the libpcap file
+ ./configure --prefix=/usr --host=arm-linux-gnueabi --with-pcap=linux
+ make 
+ sudo make install
+ arm-linux-gnueabi-gcc EdittedpacketSniffer.c -o pcbin -lpcap -L/home/vmw_ubuntu/Desktop/libpcap-1.8.1
+  
+
