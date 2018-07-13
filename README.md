@@ -23,7 +23,7 @@ Configuring the libpcap file   /
  ./configure --prefix=/usr --host=arm-linux-gnueabi --with-pcap=linux   /
  make   /
  sudo make install  /
- arm-linux-gnueabi-gcc EdittedpacketSniffer.c -static -s -o pcbin -lpcap -L/home/vmw_ubuntu/Desktop/libpcap-1.8.1
+ arm-linux-gnueabi-gcc packetSniffer.c -static -s -o pcbin -lpcap -L/home/vmw_ubuntu/Desktop/libpcap-1.8.1
 
   
 
