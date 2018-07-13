@@ -16,6 +16,10 @@
 #define SIZE_ETHERNET 14
 #define IP_HL(ip)               (((ip)->ip_vhl) & 0x0f)
 #define IP_V(ip)                (((ip)->ip_vhl) >> 4)
+#define ARP_ETHERNET    0x0001
+#define ARP_IPV4        0x0800
+#define ARP_REQUEST     0x0001
+#define ARP_REPLY       0x0002
 
 struct Ip {
         u_char  ip_vhl;                 /* version << 4 | header length >> 2 */
@@ -32,13 +36,24 @@ struct Ip {
         u_short ip_sum;                 /* checksum */
         struct  in_addr ip_src,ip_dst;  /* source and dest address */
 };
-
-
-struct Ethernet {
-        u_char  ether_dhost[ETHER_ADDR_LEN];    /* destination host address */
-        u_char  ether_shost[ETHER_ADDR_LEN];    /* source host address */
-        u_short ether_type;                     /* IP? ARP? RARP? etc */
+struct Arphdr { 
+    unsigned short htype;    /* Hardware Type           */ 
+    unsigned short ptype;    /* Protocol Type           */ 
+    u_char hlen;        /* Hardware Address Length */ 
+    u_char plen;        /* Protocol Address Length */ 
+    unsigned short opc;     /* Operation Code          */ 
+    u_char sha[6];      /* Sender hardware address */ 
+    u_char spa[4];      /* Sender IP address       */ 
+    u_char tha[6];      /* Target hardware address */ 
+    u_char tpa[4];      /* Target IP address       */ 
 };
+
+
+/*struct Ethernet {
+        u_char  ether_dhost[ETHER_ADDR_LEN];    /* destination host address 
+        u_char  ether_shost[ETHER_ADDR_LEN];    /* source host address 
+        u_short ether_type;                     /* IP? ARP? RARP? etc 
+};*/
 
 typedef u_int tcp_seq;
 
@@ -71,11 +86,12 @@ void printHexAsciiValueOfPayload(const u_char *payload, int len,FILE *f)
 	int j =0;
 	for(i =0; i < len ; i++){
 		printf("%02x" , *temp);
-		temp++;
-		printf(" ");
 		
 		fprintf(f,"%02x" ,*temp);
 		fprintf(f," ");
+		temp++;
+		printf(" ");
+		
 	}
 
 	printf("     ");
@@ -89,10 +105,14 @@ void printHexAsciiValueOfPayload(const u_char *payload, int len,FILE *f)
 	}*/
 	 for(j=0 ; j<len ; j++)
             {
-                if(temp[j]>=32 && temp[j]<=128) 
+                if(temp[j]>=32 && temp[j]<=128) {
 			fprintf(f,"%c",(unsigned char)temp[j]);
-                else 
+			printf("%c",(unsigned char) temp[j]);
+		}
+                else {
 			fprintf(f,".");
+			printf(".");
+		}
             }
 	printf("\n");
 	fprintf(f,"\n");
@@ -100,12 +120,12 @@ void printHexAsciiValueOfPayload(const u_char *payload, int len,FILE *f)
 return;
 }
 void print_IP(const struct Ip *ip,FILE *f,char *protocol){
-	printf("IP Header Details\n");
-	printf("Protocol                        :%s\n",protocol);
-	printf("Source Address                  :%s\n",inet_ntoa(ip->ip_src));
-	printf("Destination Address             :%s\n",inet_ntoa(ip->ip_dst));
-	printf("IP version                      :%d\n",(unsigned int)ip->ip_vhl);
-	printf("IP total length                 :%d\n",(unsigned int)ip->ip_len);
+	//printf("IP Header Details\n");
+	printf("Protocol=%s ",protocol);
+	printf("%s>",inet_ntoa(ip->ip_src));
+	printf("%s ",inet_ntoa(ip->ip_dst));
+	//printf("IPFlag=%d ",ip->ip_off);
+	//printf("IP total length                 :%d\n",(unsigned int)ip->ip_len);
 	fprintf(f,"\n");
 
 	fprintf(f,"IP Header Details\n");
@@ -187,6 +207,7 @@ void print_IP(const struct Ip *ip,FILE *f,char *protocol){
 	fclose(f);
 	i++;
 }*/
+
 void print_tcp(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet,char * protocol,const struct Ip *ip,FILE *f){
 	const struct Ethernet *ethernet;  /* The ethernet header [1] */
 	
@@ -197,7 +218,7 @@ void print_tcp(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	int sizeOftcp;
 	int sizeOfpayload;
 	static int i=0;
-	
+	int j=0;
 	const u_char *temp;
   	temp = payload;
 	//printf("here we got output");
@@ -214,59 +235,67 @@ void print_tcp(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	sizeOftcp = TH_OFF(tcp)*4;
 	print_IP(ip,f,protocol);
 	payload = (u_char *)(packet + SIZE_ETHERNET + sizeOfip + sizeOftcp);
-	printf("The size of tcpsize = %d\n",sizeof tcp);
+	
 	/* compute tcp payload (segment) size */
 	sizeOfpayload = ntohs(ip->ip_len) - (sizeOfip + sizeOftcp);
+	unsigned int sequence =tcp->th_seq;
+	int bin =tcp->th_flags;
 	
-	//printToTextFile(sourceAdd,destAdd,protocol,payload,sizeOfpayload,ethernet);
-	printf("\n");
-	printf("TCP Header detail\n");
-	printf("\n");
-	printf("Source Port                  :%d\n",ntohs(tcp->th_sport));
-	printf("Destination Port             :%d\n",ntohs(tcp->th_dport));
-	printf("TCP Header length            :%d\n",sizeOftcp);
-	printf("\n");
-	fprintf(f,"\n");
-	fprintf(f,"TCP Header detail\n");
-	fprintf(f,"\n");
-	fprintf(f,"Source Port                  :%d\n",ntohs(tcp->th_sport));
-	fprintf(f,"Destination Port             :%d\n",ntohs(tcp->th_dport));
-	fprintf(f,"TCP Header length            :%d\n",sizeOftcp);
-	fprintf(f,"\n");
-	//fprintf(f,"Payload\n");
+	int binaryArr[6];
+	for(j=0;j<=5;j++){
+		binaryArr[j]=0;
 	
-	if(sizeOfpayload<=0){
-			printf("There no payload in the packet\n");
-			fprintf(f,"There no payload in the packet\n");
-			fprintf(f,"End of packet\n");
 	}
+	for(j=5;bin>0;j--)     //because flag are just decimal  number convert to binary 010010 this means ack and syn.
+	{    
+		binaryArr[j]=bin%2;    
+		bin=bin/2;    
+	}                                                               
 	
-	else if (sizeOfpayload > 0) {
-		printf("   Payload (%d bytes):\n", sizeOfpayload);
-		fprintf(f,"Payload (%d bytes):\n", sizeOfpayload);
-		int lineWidth = 16;			/* number of bytes per line */	
-		int size=sizeOfpayload;
-		int currentLineLength;                   //The current length of the line left to be printed out.
-		
-	
-			if(sizeOfpayload<=lineWidth){									//if the size of the payload is less thant 16 bytes we can just print it out.
-				printHexAsciiValueOfPayload(payload,sizeOfpayload,f);			
+	// Therefore to know which flag is in the packet we would need to convert decimal to binary and see which bit is not 0.
+	printf("Flags:[");
+	for(j=5;j>=0;j--){
+	  
+	  switch(j){
+		case 0: 
+			//printf("binary= %d",binaryArr[0]);
+			if(binaryArr[0]==1){
+				printf("U");
 			}
-			else{
-				while(1){
-					currentLineLength=lineWidth%size;						//find the length of the line of the packet we are processing
-					size=size-currentLineLength;							//find the remaining size of the payload we have to process
-					printHexAsciiValueOfPayload(payload,currentLineLength,f);				//print the line of packet
-					payload=payload+currentLineLength;						//shift the pointer to the next line of 16 byte or remaining byte to process
-					if(size<=lineWidth){								//if the packet is at its last line 
-						printHexAsciiValueOfPayload(payload,size,f);				//print the last line and break from the infinite loop
-						fprintf(f,"End of packet\n");						
-						break;
-					}
-				}
-			}	
+			break;
+		case 1://printf("binary= %d",binaryArr[1]);
+			if(binaryArr[1]==1){
+				printf(".");
+			}
+			break;
+		case 2:if(binaryArr[2]==1){
+				printf("P");
+			}
+			break;
+		case 3:if(binaryArr[3]==1){
+				printf("R");
+			}
+			break;
+		case 4:if(binaryArr[4]==1){
+				printf("S");
+			}
+			break;
+		case 5:if(binaryArr[5]==1){
+				printf("E");
+			}
+			break;
+			
+	}
+	}
+	printf("] ");
 	
-		}
+	
+	printf("seq:%d",sequence);
+	printf(" ack:%d",tcp->th_ack);
+	printf(" win:%d",tcp->th_win);
+	printf(" cs:%d",tcp->th_sum);
+	printf(" Length:%d",sizeOfpayload);
+	printf("\n");
 	
 	
 	i++;
@@ -282,57 +311,72 @@ void print_udp(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	int sizeOfUdp=8;
 	int sizeOfpayload = ntohs(ip->ip_len) - (sizeOfip + sizeOfUdp);
 	const char * payload = (u_char *)(packet + SIZE_ETHERNET + sizeOfip + sizeOfUdp);
-	printf("UDP Header Details");
+  	printf("SPort=%d ", ntohs(udph->source));
+        printf("DPort=%d " , ntohs(udph->dest));
+  	printf("Length=%d " , ntohs(udph->len));
+    	printf("Checksum=%d " , ntohs(udph->check));
+	printf("HLength=%d ",sizeOfUdp);
+	
 	printf("\n");
-	printf("\nUDP Header\n");
-  	printf("Source Port                  :%d\n", ntohs(udph->source));
-        printf("Destination Port             : %d\n" , ntohs(udph->dest));
-  	printf("UDP Length                   : %d\n" , ntohs(udph->len));
-    	printf("UDP Checksum                 : %d\n" , ntohs(udph->check));
-	printf("UDP Header Length            :%d Bytes\n",sizeOfUdp);
-	fprintf(f,"UDP Header Details");
-	fprintf(f,"\n");
-	fprintf(f,"\nUDP Header\n");
-  	fprintf(f,"Source Port                  :%d\n", ntohs(udph->source));
-        fprintf(f,"Destination Port             : %d\n" , ntohs(udph->dest));
-  	fprintf(f,"UDP Length                   : %d\n" , ntohs(udph->len));
-    	fprintf(f,"UDP Checksum                 : %d\n" , ntohs(udph->check));
-	fprintf(f,"UDP Header Length            :%d Bytes\n",sizeOfUdp);
-	if(sizeOfpayload<=0){
-			printf("There no payload in the packet\n");
-			fprintf(f,"There no payload in the packet\n");
-			fprintf(f,"End of packet\n");
-	}
 	
-	else if (sizeOfpayload > 0) {
-		printf("   Payload (%d bytes):\n", sizeOfpayload);
-		fprintf(f,"Payload (%d bytes):\n", sizeOfpayload);
-		int lineWidth = 16;			/* number of bytes per line */	
-		int size=sizeOfpayload;
-		int currentLineLength;                   //The current length of the line left to be printed out.
-		
 	
-			if(sizeOfpayload<=lineWidth){									//if the size of the payload is less thant 16 bytes we can just print it out.
-				printHexAsciiValueOfPayload(payload,sizeOfpayload,f);			
+	
+}
+void printARP(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet,FILE *f,const struct ether_header *ethernet,const struct Arphdr *arp){
+	
+	
+	printf("Protocol=ARP ");
+	//printf("SAdd%s ",ether_ntoa((const struct ether_addr *)&ethernet->ether_shost));
+	//printf("dAdd%s ",ether_ntoa((const struct ether_addr *)&ethernet->ether_dhost));
+	
+
+	//foramt is shown in this manner for request..... destination address(daDD) pls send to senderAddress(sadd)
+	//format is shown in this manner for reply....... destination address(dAdd) can be found at destination mac address(dMAdd)
+	//example protocol=ARP Request dAdd=192.168.136.2. sAdd=192.168.136.128.
+	//ARP Reply dAdd=192.168.136.128. dMAdd=00:0c:29:5d:c1:ce:
+
+	switch(ntohs(arp->opc)){
+		case 1:printf("Request ");
+			int i=0;
+			printf("dAdd=");			
+			for(i=0;i<4;i++){
+				if(i!=3)
+					printf("%d.",arp->tpa[i]);
+				else
+					printf("%d",arp->tpa[i]);
+					
 			}
-			else{
-				while(1){
-					currentLineLength=lineWidth%size;						//find the length of the line of the packet we are processing
-					size=size-currentLineLength;							//find the remaining size of the payload we have to process
-					printHexAsciiValueOfPayload(payload,currentLineLength,f);				//print the line of packet
-					payload=payload+currentLineLength;						//shift the pointer to the next line of 16 byte or remaining byte to process
-					if(size<=lineWidth){								//if the packet is at its last line 
-						printHexAsciiValueOfPayload(payload,size,f);				//print the last line and break from the infinite loop
-						fprintf(f,"End of packet\n");						
-						break;
-					}
-				}
-			}	
-	
-		}
-	
-	
-	
+			printf(" sAdd=");
+			for(i=0;i<4;i++){
+				if(i!=3)
+					printf("%d.",arp->spa[i]);	
+				else
+					printf("%d",arp->spa[i]);	
+			}
+			printf("\n");
+			break;	
+		case 2:printf("Reply ");
+			
+			printf("dAdd=");			
+			for(i=0;i<4;i++){
+				if(i!=3)
+					printf("%d.",arp->tpa[i]);
+				else
+					printf("%d",arp->tpa[i]);		
+			}
+			printf(" dMAdd=");
+			for(i=0;i<6;i++){
+				if(i!=5)
+					printf("%02x:",arp->tha[i]);	
+				else
+					printf("%02x",arp->tha[i]);		
+			}
+			printf("\n");
+			break;	
+		       
+
+	}
+	printf("\n");
 }
 void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet){
 	static int count = 1;   
@@ -348,9 +392,10 @@ void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	 	printf("Error opening file!\n");	
     		exit(1);
 	}
-	const struct Ethernet *ethernet;  /* The ethernet header [1] */
+	const struct ether_header *ethernet;  /* The ethernet header [1] */
 	const struct Ip *ip;              /* The IP header */
 	const struct Tcp *tcp;            /* The TCP header */
+	const struct Arphdr *arp;	 /*The ARP header*/
 	const char *payload;                    /* Packet payload */
 
 	int sizeOfip;
@@ -361,38 +406,33 @@ void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	
 	
 	/* define ethernet header */
-	ethernet = (struct Ethernet*)(packet);
+	ethernet = (struct ether_header*)(packet);
+	
 	
 	/* define/compute ip header offset */
 	ip = (struct Ip*)(packet + SIZE_ETHERNET);
-	//sizeOfip = IP_HL(ip)*4;
-	//tcp = (struct Tcp*)(packet + SIZE_ETHERNET + sizeOfip);
-	//sizeOftcp = TH_OFF(tcp)*4;
-	/*if (sizeOfip < 20||sizeOftcp<20) {
-		if(sizeOfip<20)	{	
-			//printf("   * Invalid IP header length: %u bytes\n", sizeOfip);
-		}
-		else if(sizeOftcp<20){
-			//printf("   * Invalid TCP header length: %u bytes\n", sizeOftcp);
-		}
-		return;
-	}*/
-	printf("\nPacket number %d:\n", count);
-	fprintf(f,"\nPacket number %d:\n", count);
+	
 	count++;
 	
 	
 	
 	char *protocol;
+	//determine if a packet is of type ARP or IP
+	if (ntohs (ethernet->ether_type) == ETHERTYPE_ARP){
+		arp =(struct Arphdr *)(packet+14);
+		printARP(args,hdr,packet,f,ethernet,arp);
+	}
+	
+	else if (ntohs (ethernet->ether_type) == ETHERTYPE_IP){
 	/* determine protocol */	
 	switch(ip->ip_p) {
 		case IPPROTO_TCP:
-			protocol="TCP";
+			protocol="TCP ";
 			//printf(" Protocol :%s\n",protocol);	
 			print_tcp(args,hdr,packet,protocol,ip,f);		
 			break;
 		case IPPROTO_UDP:
-			protocol="UDP";
+			protocol="UDP ";
 			//printf("   Protocol: %s\n",protocol);
 			print_udp(args,hdr,packet,protocol,ip,f);
 			break;
@@ -404,10 +444,11 @@ void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 			break;
 		default:
 			printf("   Protocol: unknown\n");
+			fprintf(f,"Protocol unknown\n");
 			break;
 	}
 	
-	
+	}
 	
 	
 	fclose(f);	
@@ -419,7 +460,7 @@ void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	i++;	
 	
 }
-void sniffPacket(){
+void sniffPacket(char * interface){
 	int i =10;
   char *dev; 
   char *net; 
@@ -433,11 +474,13 @@ void sniffPacket(){
   const u_char *packet;
   struct pcap_pkthdr hdr;
   struct ether_header *eptr;
-  char filter_exp[] = "ip";
+  
+  
 struct bpf_program filter;
   printf("Start this program\n"); 
   
-  dev=pcap_lookupdev(errbuf);
+  //dev=pcap_lookupdev(errbuf);
+  dev=interface;
   printf("Sniffing on interface :%s\n",dev);
   
   //open the sniffing session
@@ -460,19 +503,19 @@ struct bpf_program filter;
 		netAdd = 0;
 		maskAdd = 0;
 	}
-if (pcap_compile(handler, &filter, filter_exp, 0, netAdd) == -1) {
+/*if (pcap_compile(handler, &filter, filter_exp, 0, netAdd) == -1) {
 		fprintf(stderr, "Couldn't parse filter %s: %s\n",
 		    filter_exp, pcap_geterr(handler));
 		exit(EXIT_FAILURE);
 	}
 
-	/* apply the compiled filter */
+	/* apply the compiled filter 
 	if (pcap_setfilter(handler, &filter) == -1) {
 		fprintf(stderr, "Couldn't install filter %s: %s\n",
 		    filter_exp, pcap_geterr(handler));
 		exit(EXIT_FAILURE);
 	}
-
+*/
  
   pcap_loop(handler,0,getPacket,NULL);
 	pcap_freecode(&filter);
@@ -502,6 +545,6 @@ int main(int argc, char **argv)
 
 	}
 	printf("interface : %s",interface);	
-	sniffPacket();
+	sniffPacket(interface);
   
 }
