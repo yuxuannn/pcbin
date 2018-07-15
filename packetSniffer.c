@@ -401,9 +401,9 @@ void print_udp(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	int sizeOfpayload = ntohs(ip->ip_len) - (sizeOfip + sizeOfUdp);
 	const char * payload = (u_char *)(packet + SIZE_ETHERNET + sizeOfip + sizeOfUdp);
   	printf("SPort=%d ", ntohs(udph->source));
-        printf("DPort=%d " , ntohs(udph->dest));
+    printf("DPort=%d " , ntohs(udph->dest));
   	printf("Length=%d " , ntohs(udph->len));
-    	printf("Checksum=%d " , ntohs(udph->check));
+    printf("Checksum=%d " , ntohs(udph->check));
 	printf("HLength=%d ",sizeOfUdp);
 	
 	printf("\n");
@@ -468,6 +468,20 @@ void printARP(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet,
 	printf("\n");
 }
 
+
+void print_dns(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet,char * protocol,const struct Ip *ip,FILE *f, const struct Dns *dns){
+	
+	printf("Protocol=DNS ");
+	// Dns protocol :
+	// Ethernet >> IP >> UDP/TCP >> DNS
+	// If port = UDP 53 or TCP 53
+	// 
+	
+	
+}
+
+
+
 //------------------------------------ OTHER IMPORTANT FUNCTION -------------------------------
 
 void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet){
@@ -484,10 +498,12 @@ void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	 	printf("Error opening file!\n");	
     		exit(1);
 	}
-	const struct ether_header *ethernet;  /* The ethernet header [1] */
-	const struct Ip *ip;              /* The IP header */
-	const struct Tcp *tcp;            /* The TCP header */
-	const struct Arphdr *arp;	 /*The ARP header*/
+	const struct ether_header *ethernet;  	/* The ethernet header [1] */
+	const struct Ip *ip;              		/* The IP header */
+	const struct Tcp *tcp;            		/* The TCP header */
+	const struct Arphdr *arp;	 			/* The ARP header */
+	const struct udphdr *udph;				/* The UDP header */
+	const struct Dns *dns;					/* The DNS header */
 	const char *payload;                    /* Packet payload */
 
 	int sizeOfip;
@@ -520,13 +536,39 @@ void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	switch(ip->ip_p) {
 		case IPPROTO_TCP:
 			protocol="TCP ";
-			//printf(" Protocol :%s\n",protocol);	
+			//printf(" Protocol :%s\n",protocol);
+			// If Source/Destination port == 53, then it is a DNS packet
+			// th_sport, th_dport (tcp port variable names)
+			
+			
+			
+			
+			// Else
 			print_tcp(args,hdr,packet,protocol,ip,f);		
 			break;
 		case IPPROTO_UDP:
 			protocol="UDP ";
 			//printf("   Protocol: %s\n",protocol);
-			print_udp(args,hdr,packet,protocol,ip,f);
+			
+			struct udphdr *udph = (struct udphdr*)(packet+SIZE_ETHERNET+IP_HL(ip));
+			int sizeOfip = IP_HL(ip)*4;
+			int sizeOfUdp=8;
+			int sizeOfpayload = ntohs(ip->ip_len) - (sizeOfip + sizeOfUdp);
+			const char * payload = (u_char *)(packet + SIZE_ETHERNET + sizeOfip + sizeOfUdp);
+			
+			// If Source/Destination port == 53, then it is a DNS packet
+			// source, dest (udp port variable names)
+			// print_dns()
+			if(ntohs(udph->source) == 53){
+				
+				print_dns(args,hdr,packet,protocol,ip,f,dns);
+			}else{// else print_udp
+				
+				print_udp(args,hdr,packet,protocol,ip,f);
+			}
+			
+			
+			
 			break;
 		case IPPROTO_ICMP:
 			//printf("   Protocol: ICMP\n");
