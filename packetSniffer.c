@@ -14,6 +14,8 @@
 #define ETHER_ADDR_LEN 6
 #define SNAP_LEN 1518
 #define SIZE_ETHERNET 14
+#define SIZE_TCP 20
+#define SIZE_UDP 8
 #define IP_HL(ip)               (((ip)->ip_vhl) & 0x0f)
 #define IP_V(ip)                (((ip)->ip_vhl) >> 4)
 #define ARP_ETHERNET    0x0001
@@ -480,8 +482,10 @@ void print_dns(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	// If port = UDP 53
 	// 
 	
-	struct Dns *dns = (struct Dns)(packet + SIZE_ETHERNET + IP_HL(ip) + udph->len);
+	struct Dns *dns = (struct Dns)(packet + SIZE_ETHERNET + IP_HL(ip) + SIZE_UDP);
 	// print DNS items
+	print_IP(ip,f,protocol);
+	
 	
 	
 }
@@ -495,7 +499,7 @@ void print_dns(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	// If port = TCP 53
 	// 
 	
-	struct Dns *dns = (struct Dns)(packet + SIZE_ETHERNET + IP_HL(ip) + tcp->th_offx2);
+	struct Dns *dns = (struct Dns)(packet + SIZE_ETHERNET + IP_HL(ip) + TH_OFF(tcp)*4);
 	// print DNS items
 	
 }
