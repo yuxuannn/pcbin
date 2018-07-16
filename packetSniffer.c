@@ -487,16 +487,31 @@ void printARP(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet,
 
 void print_dns(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet,char * protocol,const struct Ip *ip){
 	
-	printf("Protocol=DNS ");
-	// Dns protocol :
+		// Dns protocol :
 	// Ethernet >> IP >> UDP >> DNS
 	// If port = UDP 53
 	// 
+	const char *payload;                    /* Packet payload */
 	
-	//struct Dns *dns = (struct Dns)(packet + SIZE_ETHERNET + IP_HL(ip) + udph->len);
 	// print DNS items
-	//struct Dns *dns = (struct Dns)(packet + SIZE_ETHERNET + IP_HL(ip) + tcp->th_offx2);
+	printf("IP|");
+	printf("DNS|");
+	printf(ip->ip_src+"|");
+	printf(ip->ip_dst+"|");
 	
+	/*
+	switch(dns->dns_opcode){
+		case
+		
+		case
+	}
+	*/
+	printf(dns->dns_opcode+"|");
+	printf(dns->dns_id+"|");
+	// print Additional Records.dname
+	// print length
+	
+	printf("\n");
 }
 
 
@@ -562,14 +577,15 @@ void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 			protocol="TCP";
 			//printf(" Protocol :%s\n",protocol);
 			
-			
-			tcp = (struct Tcp*)(packet + SIZE_ETHERNET + IP_HL(ip));
-			
+			sizeOfip = IP_HL(ip)*4;
+			tcp = (struct Tcp*)(packet + SIZE_ETHERNET + sizeOfip);
+			sizeOftcp = TH_OFF(tcp)*4;
 			
 			// If Source/Destination port == 53, then it is a DNS packet
 			// th_sport, th_dport (tcp port variable names)
 			if(ntohs(tcp->th_sport) == 53 || ntohs(tcp->th_dport) == 53){
-				//print_dns(args,hdr,packet,protocol,ip);
+				dns = (struct Dns*)(packet + SIZE_ETHERNET + sizeOfip + sizeOftcp);
+				print_dns(args,hdr,packet,protocol,ip,dns);
 			}else{// Else
 				print_tcp(args,hdr,packet,protocol,ip,f);
 			}
@@ -577,14 +593,15 @@ void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 		case IPPROTO_UDP:
 			protocol="UDP";
 			//printf("   Protocol: %s\n",protocol);
-			
-			udph = (struct udphdr*)(packet + SIZE_ETHERNET + IP_HL(ip));
+			sizeOfip = IP_HL(ip)*4;
+			udph = (struct udphdr*)(packet + SIZE_ETHERNET + sizeOfip);
 			
 			// If Source/Destination port == 53, then it is a DNS packet
 			// source, dest (udp port variable names)
 			// print_dns()
 			if(ntohs(udph->source) == 53 || ntohs(udph->dest) == 53){
-				//print_dns(args,hdr,packet,protocol,ip);
+				dns = (struct Dns*)(packet + SIZE_ETHERNET + sizeOfip + SIZE_UDP);
+				print_dns(args,hdr,packet,protocol,ip,dns);
 			}else{// else print_udp
 				print_udp(args,hdr,packet,protocol,ip,f);
 			}
