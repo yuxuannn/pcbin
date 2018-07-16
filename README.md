@@ -26,6 +26,7 @@ Configuring the libpcap file   /
  arm-linux-gnueabi-gcc packetSniffer.c -static -s -o pcbin -lpcap -L/home/vmw_ubuntu/Desktop/libpcap-1.8.1
  
  added new function  writeToPcapFile(). Able to write raw packet in to pcap file
+ To compile type sudo ./pcbin -w filename
 
   
 
