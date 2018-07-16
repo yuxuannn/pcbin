@@ -21,6 +21,7 @@
 #define ARP_REQUEST     0x0001
 #define ARP_REPLY       0x0002
 
+
 //-------------------------- PACKET STRUCTURES --------------------------------
 
 // IP Packet Structure
@@ -487,31 +488,16 @@ void printARP(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet,
 
 void print_dns(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet,char * protocol,const struct Ip *ip){
 	
-		// Dns protocol :
+	printf("Protocol=DNS ");
+	// Dns protocol :
 	// Ethernet >> IP >> UDP >> DNS
 	// If port = UDP 53
 	// 
-	const char *payload;                    /* Packet payload */
 	
+	//struct Dns *dns = (struct Dns)(packet + SIZE_ETHERNET + IP_HL(ip) + udph->len);
 	// print DNS items
-	printf("IP|");
-	printf("DNS|");
-	printf(ip->ip_src+"|");
-	printf(ip->ip_dst+"|");
+	//struct Dns *dns = (struct Dns)(packet + SIZE_ETHERNET + IP_HL(ip) + tcp->th_offx2);
 	
-	/*
-	switch(dns->dns_opcode){
-		case
-		
-		case
-	}
-	*/
-	printf(dns->dns_opcode+"|");
-	printf(dns->dns_id+"|");
-	// print Additional Records.dname
-	// print length
-	
-	printf("\n");
 }
 
 
@@ -577,15 +563,14 @@ void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 			protocol="TCP";
 			//printf(" Protocol :%s\n",protocol);
 			
-			sizeOfip = IP_HL(ip)*4;
-			tcp = (struct Tcp*)(packet + SIZE_ETHERNET + sizeOfip);
-			sizeOftcp = TH_OFF(tcp)*4;
+			
+			tcp = (struct Tcp*)(packet + SIZE_ETHERNET + IP_HL(ip));
+			
 			
 			// If Source/Destination port == 53, then it is a DNS packet
 			// th_sport, th_dport (tcp port variable names)
 			if(ntohs(tcp->th_sport) == 53 || ntohs(tcp->th_dport) == 53){
-				dns = (struct Dns*)(packet + SIZE_ETHERNET + sizeOfip + sizeOftcp);
-				print_dns(args,hdr,packet,protocol,ip,dns);
+				//print_dns(args,hdr,packet,protocol,ip);
 			}else{// Else
 				print_tcp(args,hdr,packet,protocol,ip,f);
 			}
@@ -593,15 +578,14 @@ void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 		case IPPROTO_UDP:
 			protocol="UDP";
 			//printf("   Protocol: %s\n",protocol);
-			sizeOfip = IP_HL(ip)*4;
-			udph = (struct udphdr*)(packet + SIZE_ETHERNET + sizeOfip);
+			
+			udph = (struct udphdr*)(packet + SIZE_ETHERNET + IP_HL(ip));
 			
 			// If Source/Destination port == 53, then it is a DNS packet
 			// source, dest (udp port variable names)
 			// print_dns()
 			if(ntohs(udph->source) == 53 || ntohs(udph->dest) == 53){
-				dns = (struct Dns*)(packet + SIZE_ETHERNET + sizeOfip + SIZE_UDP);
-				print_dns(args,hdr,packet,protocol,ip,dns);
+				//print_dns(args,hdr,packet,protocol,ip);
 			}else{// else print_udp
 				print_udp(args,hdr,packet,protocol,ip,f);
 			}
@@ -694,28 +678,66 @@ struct bpf_program filter;
 
 }
 
+void writeToPcapFile(char *interface ,  char * filename){
+		
+  char *dev; 
+  
+  char errbuf[PCAP_ERRBUF_SIZE];
+  pcap_dumper_t *pcapfile;
+ 
+
+  pcap_t *handler;
+  
+
+	
+  printf("Start this program\n"); 
+  
+ 
+  dev=interface;
+ 
+  //handler= pcap_open_live(dev,BUFSIZ,1,1000,errbuf);
+    handler=pcap_create(dev,errbuf);
+    pcap_set_promisc(handler,1);
+    pcap_activate(handler);
+
+    //pcap_dump_open is a libpcap function that open a file to which to write packets
+    if ((pcapfile = pcap_dump_open(handler, filename)) == NULL) {
+  	  fprintf(stderr, "Error from pcap_dump_open(): %s\n", pcap_geterr(handler)); 
+    	  exit(1);
+    }
+
+  if ((pcap_loop(handler, 0, pcap_dump, (u_char *)pcapfile)) != 0) {
+    	   fprintf(stderr, "Error from pcap_loop(): %s\n", pcap_geterr(handler)); 
+    	   exit(1);
+  }
+  
+  //close a savefile being written to
+   pcap_dump_close(pcapfile); 
+   pcap_close(handler);
+
+
+}
 //-------------------------------------- MAIN FUNCTION ----------------------------------
 
 int main(int argc, char **argv)
 { 
-	int i ;
-	//printf("this is : %d\n ",argc);
-	/*for( i =0;i<argc;i++){
-		if(i!=0){
-			printf( "%s",argv[1]);
-		}
-		
-	}*/
+	
+	char *filename;
+	
 	char interface[10];
 	if(strcmp(argv[1],"-i")==0){
 		strcpy(interface,argv[2]);
+		sniffPacket(interface);
 
 	}
-	else{
+	// -w meaning write to pcap file
+	else if(strcmp(argv[1],"-w")==0) { 
 		strcpy(interface,"eth0");
+		filename=argv[2];
+		writeToPcapFile(interface,filename);
 
 	}
-	printf("interface : %s",interface);	
-	sniffPacket(interface);
+	//printf("interface : %s",interface);	
+	//sniffPacket(interface);
   
 }
