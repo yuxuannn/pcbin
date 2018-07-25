@@ -18,6 +18,7 @@
 #define SNAP_LEN 1518
 #define SIZE_ETHERNET 14
 #define SIZE_UDP 8
+#define SIZE_DNS 12
 #define IP_HL(ip)               (((ip)->ip_vhl) & 0x0f)
 #define IP_V(ip)                (((ip)->ip_vhl) >> 4)
 #define ARP_ETHERNET    0x0001
@@ -106,10 +107,10 @@ struct Question {
 };
 
 // Define Structure for Query, contains an incomplete Resource Record. [DNSname, TYPE, CLASS]
-typedef struct {
+typedef struct Query{
 	u_char *name;				/*  */
 	struct Question *question;	/*  */
-} Query;
+}query;
 
 // Fields for Records 
 struct RecordData {
@@ -125,6 +126,31 @@ struct ResourceRecord{
 	u_char *dname;				/* Domain Name */
 	struct RecordData *resource;		/* Record Data */
 };
+
+#define T_A 1 //Ipv4 address
+#define T_NS 2 //Nameserver
+#define T_CNAME 5 // canonical name
+#define T_SOA 6 /* start of authority zone */
+#define T_PTR 12 /* domain name pointer */
+#define T_MX 15 //Mail server
+#define T_TXT	= 16
+#define T_AAAA	= 28
+#define T_SRV	= 33
+#define T_OPT	= 41
+#define T_SSHFP	= 44
+#define T_SPF	= 99
+#define T_AXFR      = 252
+
+#define T_ALL	= 255
+
+/* DNS QCLASS */
+#define DNS_QCLASS_RESERVED	0
+#define DNS_QCLASS_IN		1
+#define DNS_QCLASS_CH		3
+#define DNS_QCLASS_HS		4
+#define DNS_QCLASS_NONE		254
+#define DNS_QCLASS_ANY		255
+
 
 // Each DnsRequest has a "Query", the rest are left blank
 // Each DnsReply has a "Query, Answer, Authoritative Namesever, Additional Record"
@@ -194,7 +220,7 @@ struct Dns {
 
 //---------------------------------- Print Functions -------------------------------
 
-void printHexAsciiValueOfPayload(const u_char *payload, int len,FILE *f)
+void printHexAsciiValueOfPayload(const u_char *payload, int len)
 {
 	const u_char *temp;
   	temp = payload;
@@ -203,15 +229,15 @@ void printHexAsciiValueOfPayload(const u_char *payload, int len,FILE *f)
 	for(i =0; i < len ; i++){
 		printf("%02x" , *temp);
 		
-		fprintf(f,"%02x" ,*temp);
-		fprintf(f," ");
+		//fprintf(f,"%02x" ,*temp);
+		//fprintf(f," ");
 		temp++;
 		printf(" ");
 		
 	}
 
 	printf("     ");
-	fprintf(f,"      ");
+	//fprintf(f,"      ");
 	temp=payload;
 	/*for( i =0;i<len;i++){
 	 	printf("%c",*temp);
@@ -221,16 +247,16 @@ void printHexAsciiValueOfPayload(const u_char *payload, int len,FILE *f)
 	 for(j=0 ; j<len ; j++)
             {
                 if(temp[j]>=32 && temp[j]<=128) {
-			fprintf(f,"%c",(unsigned char)temp[j]);
+			//fprintf(f,"%c",(unsigned char)temp[j]);
 			printf("%c",(unsigned char) temp[j]);
 		}
                 else {
-			fprintf(f,".");
+			//fprintf(f,".");
 			printf(".");
 		}
             }
 	printf("\n");
-	fprintf(f,"\n");
+	//fprintf(f,"\n");
 	
 return;
 }
@@ -512,7 +538,28 @@ void print_dns(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	// Ethernet >> IP >> UDP >> DNS
 	// If port = UDP 53
 	// 
-	const char *payload;                    /* Packet payload */
+	int j=0;
+	int sizeOfPayload;
+	const u_char *payload;                    /* Packet payload */
+	struct Query *qinfo;
+	const struct Tcp *tcp; 
+	int sizeOfip = IP_HL(ip)*4;
+	const u_char *temp;
+	if(strcmp(protocol,"UDP")==0){
+		/* compute UDP payload  offset */
+		payload= (u_char *)(packet + SIZE_ETHERNET + sizeOfip + SIZE_UDP+SIZE_DNS);
+		sizeOfPayload= ntohs(ip->ip_len)-(sizeOfip+SIZE_UDP+SIZE_DNS);
+		//printHexAsciiValueOfPayload(payload,sizeOfPayload);
+		temp=payload;
+		
+	}
+	else{
+		tcp = (struct Tcp*)(packet + SIZE_ETHERNET + sizeOfip);
+		int sizeOftcp = TH_OFF(tcp)*4;
+		payload= (u_char *)(packet + SIZE_ETHERNET + sizeOfip + SIZE_UDP+sizeOftcp);
+		temp=payload;
+
+	}
 	
 	// print DNS items
 	printf("IP|");
@@ -521,30 +568,108 @@ void print_dns(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	printf("%s|",inet_ntoa(ip->ip_dst));
 	
 	
-	switch(dns->dns_opcode){
-		case DNS_SQ: printf("Standard Query");
-			     if(dns->dns_qr==1){
-				printf(" Response");	
-			     }
-			break;
-		case DNS_IQ: printf("Inverse Query");
-			break;
-		case DNS_SR: printf("Status Request");
-			break;
-		case DNS_NOT: printf("Notify");
-			break;
-		case DNS_UPT: printf("Update");
-			break;
-		default: printf("Opcode"); /* If doesnt match anything */
+	if(dns->dns_qr==1){
+		switch(dns->dns_opcode){
+			case DNS_SQ: printf("Standard Query Response");
+				     	
+				     
+				break;
+			case DNS_IQ: printf("Inverse Query Response");
+				break;
+			case DNS_SR: printf("Status Request Response");
+				break;	
+			case DNS_NOT: printf("Notify");
+				break;
+			case DNS_UPT: printf("Update");
+				break;
+			default: printf("Opcode"); /* If doesnt match anything */
+		}
+		printf("|");
+		printf("%02x|",dns->dns_id);
+
 	}
-	
-	printf("|");
-	printf("%02x|",dns->dns_id);
+	else{
+		switch(dns->dns_opcode){
+			case DNS_SQ: printf("Standard Query");
+				     	
+				     
+				break;
+			case DNS_IQ: printf("Inverse Query");
+				break;
+			case DNS_SR: printf("Status Request");
+				break;	
+			case DNS_NOT: printf("Notify");
+				break;
+			case DNS_UPT: printf("Update");
+				break;
+			default: printf("Opcode"); /* If doesnt match anything */
+		}
+		printf("|");
+		printf("%02x|",dns->dns_id);
+		int offset=0;
+		int z=0,i=0;
+		//print of the question send to dns server , the website name and question type eg A=IPV4 
+		//find the payload by add all the header together and print the payload out.
+		while(*temp!=0){
+			z=*temp	;
+			for(i=0;i<z;i++){
+				temp++;
+				if(isprint(*temp)){
+					printf("%c",*temp);			
+				}			
+
+			}
+			if(*(temp+1)!=0)
+				printf(".");
+			temp++;	
+
+		}
+		printf("|");
+
+		while(*temp==0)
+			temp++;
+		switch(*temp){
+			case 1: printf("A|");
+				break;
+			case 2: printf("NS|");
+				break;
+			case 5:printf("CNAME|");
+				break;
+			case 6:printf("SOA|");
+				break;
+			case 12:printf("PTR|");
+				break;
+			case 15:printf("MX|");
+				break;
+			case 16:printf("TXT|");
+				break;
+			case 28:printf("AAAA|");
+				break;
+			case 33:printf("SRV|");
+				break;
+			case 41:printf("OPT|");
+				break;
+			case 44:printf("SSHFP|");
+				break;
+			case 99:printf("SPF|");
+				break;
+			case 252:printf("AXFR|");
+				break;
+			case 255:printf("ALL|");
+				break;
+
+		}
+		//printf("%s|",qinfo->name);
+		
+	}
 	// print Additional Records.dname
 	// print length
 	
 	printf("\n");
+	
+	
 }
+
 
 
 
@@ -598,7 +723,7 @@ void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	//determine if a packet is of type ARP or IP
 	if (ntohs (ethernet->ether_type) == ETHERTYPE_ARP){
 		arp =(struct Arphdr *)(packet+14);
-		printARP(args,hdr,packet,f,ethernet,arp);
+		//printARP(args,hdr,packet,f,ethernet,arp);
 	}
 	
 	else if (ntohs (ethernet->ether_type) == ETHERTYPE_IP){
@@ -618,7 +743,7 @@ void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 				dns = (struct Dns*)(packet + SIZE_ETHERNET + sizeOfip + sizeOftcp);
 				print_dns(args,hdr,packet,protocol,ip,dns);
 			}else{// Else
-				print_tcp(args,hdr,packet,protocol,ip,f);
+				//print_tcp(args,hdr,packet,protocol,ip,f);
 			}
 			break;
 		case IPPROTO_UDP:
@@ -634,7 +759,7 @@ void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 				dns = (struct Dns*)(packet + SIZE_ETHERNET + sizeOfip + SIZE_UDP);
 				print_dns(args,hdr,packet,protocol,ip,dns);
 			}else{// else print_udp
-				print_udp(args,hdr,packet,protocol,ip,f);
+				//print_udp(args,hdr,packet,protocol,ip,f);
 			}
 			
 			break;
