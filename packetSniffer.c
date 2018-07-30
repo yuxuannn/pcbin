@@ -19,6 +19,7 @@
 #define SIZE_ETHERNET 14
 #define SIZE_UDP 8
 #define SIZE_DNS 12
+#define SIZE_QNSIZE 4
 #define IP_HL(ip)               (((ip)->ip_vhl) & 0x0f)
 #define IP_V(ip)                (((ip)->ip_vhl) >> 4)
 #define ARP_ETHERNET    0x0001
@@ -538,6 +539,7 @@ void print_dns(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	// Ethernet >> IP >> UDP >> DNS
 	// If port = UDP 53
 	// 
+	struct in_addr addr;
 	int j=0;
 	int sizeOfPayload;
 	const u_char *payload;                    /* Packet payload */
@@ -545,11 +547,13 @@ void print_dns(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	const struct Tcp *tcp; 
 	int sizeOfip = IP_HL(ip)*4;
 	const u_char *temp;
+	struct ResourceRecord *rr;
+	
 	if(strcmp(protocol,"UDP")==0){
 		/* compute UDP payload  offset */
 		payload= (u_char *)(packet + SIZE_ETHERNET + sizeOfip + SIZE_UDP+SIZE_DNS);
 		sizeOfPayload= ntohs(ip->ip_len)-(sizeOfip+SIZE_UDP+SIZE_DNS);
-		//printHexAsciiValueOfPayload(payload,sizeOfPayload);
+		//printHexAsciiValueOfPayload(payload,sizeOfPayload);    <--------------------------uncomment here to read the packet payload
 		temp=payload;
 		
 	}
@@ -560,7 +564,7 @@ void print_dns(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 		temp=payload;
 
 	}
-	
+	//printf("DNs ANs record =%d\n",dns->dns_ancount);
 	// print DNS items
 	printf("IP|");
 	printf("DNS|");
@@ -569,6 +573,16 @@ void print_dns(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	
 	
 	if(dns->dns_qr==1){
+		/*We see the byte 0xc0, which corresponds to a decimal value
+of 192. This is clearly larger than the max label length (MAXLABEL =
+63), so we know that we have a DNS pointer on our hands. We know that
+the pointer references the absolute offset of 'xc00c' We know that
+the first 2 bits of the first byte must be ignored, because this is
+the signature of a compressed label. So we get rid of these 2 bits by
+bitmasking them out. */
+		int offset =1;    //0 for false 1 for true	
+		int l=0;
+		unsigned char buffer[sizeOfPayload*2+1];
 		switch(dns->dns_opcode){
 			case DNS_SQ: printf("Standard Query Response");
 				     	
@@ -586,7 +600,154 @@ void print_dns(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 		}
 		printf("|");
 		printf("%02x|",dns->dns_id);
+		int z=0,i=0;
+		//print of the question send to dns server , the website name and question type eg 			A=IPV4 
+		//find the payload by add all the header together and print the payload out.
+		while(*temp!=0){
+			z=*temp	;
+			for(i=0;i<z;i++){
+				temp++;
+				if(isprint(*temp)){
+					printf("%c",*temp);			
+				}			
 
+			}
+			if(*(temp+1)!=0)
+				printf(".");
+			temp++;	
+
+		}
+		printf("|");		
+		//this function is to point the pointer to the end of the name section of dns replies. Name are like www.google.com . Name are of variable size like www.youtube.com and www.google.come
+		//have different sizes this will make sure the pointer point to the end of the name section.
+		while(offset!=0){
+			if(*temp ==12){
+				offset=0;
+				temp++;
+			}
+			else{
+				temp++;
+				l++;
+			}
+
+		}
+		
+		
+		int ll=0;     //just for while loop only not impt
+		/*u_short dnsAncount;
+		dnsAncount=dns->dns_ancount;
+		dnsAncount/=256;
+		while(dnsAncount!=0){*/ //still work in progress on need to make sure all type of dns packets are done before adding in while loop based on AnCount or else program will be mess up.
+		//basically temp is a pointer pointing to the packet payload. 
+		//uncomment the hexasccivalue function above to understand the code.
+		// the below code is to jump to the section of the payload that contains the DNS type .
+		while(*temp==0){
+			temp++;
+
+		}
+		//once there we will use a switch case to determine what type  is it, A for IPV4 AAAA for IPV6
+		//once we got the flag we will want to get the answer ip address . Therefore we will need to skip to that section.
+		// other than the name the other section of dns replies are of fixed size
+		// Type 2byte class 2 bytes TTL 4 bytes , RLength 2 bytes
+		// since the temp below is around after type segment after temp ++ we only need to add 2 +4+2 to reach the resource data.
+		switch(*temp){
+			case 1: printf("A|");
+				temp++;
+				temp=temp+2+4+2;
+				
+
+					for(ll=0;ll<4;ll++){
+						if(ll!=3){
+							printf("%d.",*temp);
+					
+						}
+						else
+							printf("%d",*temp);	
+					    
+					temp++;
+					
+					}
+					temp++;
+					
+
+				
+				
+				
+			
+				break;
+			case 2: printf("NS|");
+				break;
+			case 5:printf("CNAME|");
+				temp=temp+9;
+				while(*temp!=0){
+					z=*temp	;
+				for(i=0;i<z;i++){
+					temp++;
+					if(isprint(*temp)){
+						printf("%c",*temp);			
+					}			
+
+				}
+				if(*(temp+1)!=0)
+					printf(".");
+				temp++;	
+
+				}
+				temp=temp+3;	
+				break;
+			case 6:printf("SOA|");
+				break;
+			case 12:printf("PTR|");
+				break;
+			case 15:printf("MX|");
+				break;
+			case 16:printf("TXT|");
+				break;
+			case 28:printf("AAAA|");
+				temp++;
+				
+				temp=temp+8;
+				int o=0;
+				for(ll=0;ll<16;ll++){
+					if(o!=2){
+						printf("%02x",*temp);
+						o++;
+					}
+					else{
+											
+							printf(":");
+						o=1;
+						printf("%02x",*temp);
+					}	
+
+					
+					temp++;
+
+				}
+				break;
+			case 33:printf("SRV|");
+				break;
+			case 41:printf("OPT|");
+				break;
+			case 44:printf("SSHFP|");
+				break;
+			case 99:printf("SPF|");
+				break;
+			case 252:printf("AXFR|");
+				break;
+			case 255:printf("ALL|");
+				break;
+
+		}
+			//dnsAncount--;
+		//}
+		//temp++;
+		//because the above only points the pointer to 2 byte type  so to reach the resource len  we would need to bypass 2 byte class and 4 byte ttl.
+		//temp=temp+2+4;
+
+		
+		
+		
 	}
 	else{
 		switch(dns->dns_opcode){
@@ -908,6 +1069,10 @@ int main(int argc, char **argv)
 		filename=argv[2];
 		writeToPcapFile(interface,filename);
 
+	}
+	else if (strcmp(argv[1],"-f")==0) { 
+	
+		
 	}
 	//printf("interface : %s",interface);	
 	//sniffPacket(interface);
