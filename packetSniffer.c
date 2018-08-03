@@ -230,53 +230,39 @@ void printHexAsciiValueOfPayload(const u_char *payload, int len)
 	for(i =0; i < len ; i++){
 		printf("%02x" , *temp);
 		
-		//fprintf(f,"%02x" ,*temp);
-		//fprintf(f," ");
+		
 		temp++;
 		printf(" ");
 		
 	}
 
 	printf("     ");
-	//fprintf(f,"      ");
+	
 	temp=payload;
-	/*for( i =0;i<len;i++){
-	 	printf("%c",*temp);
-		fprintf(f,"%c",*temp);
-		temp++;
-	}*/
+	
 	 for(j=0 ; j<len ; j++)
             {
                 if(temp[j]>=32 && temp[j]<=128) {
-			//fprintf(f,"%c",(unsigned char)temp[j]);
+			
 			printf("%c",(unsigned char) temp[j]);
 		}
                 else {
-			//fprintf(f,".");
+			
 			printf(".");
 		}
             }
 	printf("\n");
-	//fprintf(f,"\n");
+
 	
 return;
 }
 void print_IP(const struct Ip *ip,FILE *f,char *protocol){
-		//printf("IP Header Details\n");
+	
 	printf("IP|");
 	printf("%s|",protocol);
 	printf("%s|",inet_ntoa(ip->ip_src));
 	printf("%s|",inet_ntoa(ip->ip_dst));
-	//printf("IPFlag=%d ",ip->ip_off);
-	//printf("IP total length                 :%d\n",(unsigned int)ip->ip_len);
-	fprintf(f,"\n");
-
-	fprintf(f,"IP Header Details\n");
-	fprintf(f,"Protocol                     :%s\n",protocol);	
-	fprintf(f,"Source Address               :%s\n",inet_ntoa(ip->ip_src));
-	fprintf(f,"Destination Address          :%s\n",inet_ntoa(ip->ip_dst));
-	fprintf(f,"Ip Version                   :%d\n",(unsigned int )ip->ip_vhl);
-	fprintf(f,"IP header length             :%d\n",IP_HL(ip)*4);
+	
 }
 /*void printToTextFile(char * sourceAdd,char *destAdd,char *protocol, const char *payload,int sizeOfpayload,const struct Ethernet *ethHdr){
 	static int i=0;
@@ -361,7 +347,7 @@ void print_tcp(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	int j=0;
 	const u_char *temp;
   	temp = payload;
-	//printf("here we got output");
+	
 	
 	
 	
@@ -564,8 +550,7 @@ void print_dns(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 		temp=payload;
 
 	}
-	//printf("DNs ANs record =%d\n",dns->dns_ancount);
-	// print DNS items
+
 	printf("IP|");
 	printf("DNS|");
 	printf("%s|",inet_ntoa(ip->ip_src));
@@ -820,11 +805,10 @@ bitmasking them out. */
 				break;
 
 		}
-		//printf("%s|",qinfo->name);
+		
 		
 	}
-	// print Additional Records.dname
-	// print length
+	
 	
 	printf("\n");
 	
@@ -884,7 +868,7 @@ void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	//determine if a packet is of type ARP or IP
 	if (ntohs (ethernet->ether_type) == ETHERTYPE_ARP){
 		arp =(struct Arphdr *)(packet+14);
-		//printARP(args,hdr,packet,f,ethernet,arp);
+		printARP(args,hdr,packet,f,ethernet,arp);
 	}
 	
 	else if (ntohs (ethernet->ether_type) == ETHERTYPE_IP){
@@ -892,7 +876,7 @@ void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	switch(ip->ip_p) {
 		case IPPROTO_TCP:
 			protocol="TCP";
-			//printf(" Protocol :%s\n",protocol);
+			
 			
 			sizeOfip = IP_HL(ip)*4;
 			tcp = (struct Tcp*)(packet + SIZE_ETHERNET + sizeOfip);
@@ -904,12 +888,12 @@ void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 				dns = (struct Dns*)(packet + SIZE_ETHERNET + sizeOfip + sizeOftcp);
 				print_dns(args,hdr,packet,protocol,ip,dns);
 			}else{// Else
-				//print_tcp(args,hdr,packet,protocol,ip,f);
+				print_tcp(args,hdr,packet,protocol,ip,f);
 			}
 			break;
 		case IPPROTO_UDP:
 			protocol="UDP";
-			//printf("   Protocol: %s\n",protocol);
+			
 			sizeOfip = IP_HL(ip)*4;
 			udph = (struct udphdr*)(packet + SIZE_ETHERNET + sizeOfip);
 			
@@ -920,7 +904,7 @@ void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 				dns = (struct Dns*)(packet + SIZE_ETHERNET + sizeOfip + SIZE_UDP);
 				print_dns(args,hdr,packet,protocol,ip,dns);
 			}else{// else print_udp
-				//print_udp(args,hdr,packet,protocol,ip,f);
+				print_udp(args,hdr,packet,protocol,ip,f);
 			}
 			
 			break;
