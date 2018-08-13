@@ -69,7 +69,7 @@ struct Arphdr {
 
 
 // TCP Packet Structure
-typedef u_int tcp_seq;
+typedef u_long tcp_seq;
 
 struct Tcp {
         u_short th_sport;               /* source port */
@@ -243,7 +243,7 @@ void printHexAsciiValueOfPayload(const u_char *payload, int len)
 	 for(j=0 ; j<len ; j++)
             {
                 if(temp[j]>=32 && temp[j]<=128) {
-			
+		
 			printf("%c",(unsigned char) temp[j]);
 		}
                 else {
@@ -252,89 +252,23 @@ void printHexAsciiValueOfPayload(const u_char *payload, int len)
 		}
             }
 	printf("\n");
-
 	
 return;
 }
-void print_IP(const struct Ip *ip,FILE *f,char *protocol){
+void print_IP(const struct Ip *ip,char *protocol){
+		
+		
+	printf("IP ");
+	printf("%s ",protocol);
+	printf("Src:%s ",inet_ntoa(ip->ip_src));
+	printf("Dst:%s ",inet_ntoa(ip->ip_dst));
 	
-	printf("IP|");
-	printf("%s|",protocol);
-	printf("%s|",inet_ntoa(ip->ip_src));
-	printf("%s|",inet_ntoa(ip->ip_dst));
+
+
 	
 }
-/*void printToTextFile(char * sourceAdd,char *destAdd,char *protocol, const char *payload,int sizeOfpayload,const struct Ethernet *ethHdr){
-	static int i=0;
-	FILE * f;
-	const u_char *temp;
-  	temp = payload;
-	//printf("here we got output");
-	if(i==0)
-		
-		f = fopen("output.txt", "w");
-	else
-		f=fopen("output.txt", "a");
-	if (f == NULL)
-	{
-	 	printf("Error opening file!\n");	
-    		exit(1);
-	}
-	fprintf(f, "%s", protocol);
-	fprintf(f, "~%s", sourceAdd);
-	fprintf(f, ">%s\n", destAdd);
-	fprintf(f, "Payload~");
-	if(sizeOfpayload<=0){
-			fprintf(f,"There are no payload in the packet\n");
-			
-	}
-	else{
-		int j;
-		int lineWidth = 16;			/* number of bytes per line 
-		int size=sizeOfpayload;
-		int currentLineLength;                   //The current length of the line left to be printed out.
-		if(size<=lineWidth){
-			j=0;
-			for(j=0;j<currentLineLength;j++){
-				fprintf(f,"%02x" , *temp);
-				temp++;
-				fprintf(f," ");
-			}
-			fprintf(f,"\n");
-		}
-		else{
-			j=0;
-			while(1){
-				currentLineLength=lineWidth%size;						//find the length of the line of the packet we are processing
-				size=size-currentLineLength;							//find the remaining size of the payload we have to process
-				printf("Current line length is :%d\n",currentLineLength);
-				printf("Current size is :%d\n",size);
-				for(j=0;j<currentLineLength;j++){
-					fprintf(f,"%02x" , *temp);
-					temp++;
-					fprintf(f," ");
-				}
-				fprintf(f,"\n");
-				payload=payload+currentLineLength;						//shift the pointer to the next line of 16 byte or remaining byte to process
-				if(size<=lineWidth){								//if the packet is at its last line 
-						for(j=0;j<size;j++){
-							fprintf(f,"%02x" , *temp);
-							temp++;
-							fprintf(f," ");
-						}
-						
-						fprintf(f,"\n");				//print the last line and break from the infinite loop
-						break;
-				}
-			}
-		}
-	}
-	
-	fclose(f);
-	i++;
-}*/
 
-void print_tcp(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet,char * protocol,const struct Ip *ip,FILE *f){
+void print_tcp(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet,char * protocol,const struct Ip *ip){
 	const struct Ethernet *ethernet;  /* The ethernet header [1] */
 	
 	const struct Tcp *tcp;            /* The TCP header */
@@ -347,7 +281,7 @@ void print_tcp(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	int j=0;
 	const u_char *temp;
   	temp = payload;
-	
+	//printf("here we got output");
 	
 	
 	
@@ -359,20 +293,23 @@ void print_tcp(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	sizeOfip = IP_HL(ip)*4;
 	tcp = (struct Tcp*)(packet + SIZE_ETHERNET + sizeOfip);
 	sizeOftcp = TH_OFF(tcp)*4;
-	print_IP(ip,f,protocol);
+	
 	payload = (u_char *)(packet + SIZE_ETHERNET + sizeOfip + sizeOftcp);
 	
 	/* compute tcp payload (segment) size */
 	sizeOfpayload = ntohs(ip->ip_len) - (sizeOfip + sizeOftcp);
-	unsigned int sequence =tcp->th_seq;
+		
+	unsigned long sequence =tcp->th_seq;
+	
+	print_IP(ip,protocol);
 	// tcp->th_flag are in decimal number  of the flags	
 	int bin =tcp->th_flags;
 	
 	int binaryArr[6];
 
 	//printing the source port and destination port
-	printf("%d|",tcp->th_sport);
-	printf("%d|",tcp->th_dport);
+	printf("sPort:%d ",tcp->th_sport);
+	printf("dPort:%d ",tcp->th_dport);
 	for(j=0;j<=5;j++){
 		binaryArr[j]=0;
 	
@@ -384,7 +321,7 @@ void print_tcp(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	}                                                               
 	
 	// Therefore to know which flag is in the packet we would need to convert decimal to binary and see which bit is not 0.
-	
+	printf("[");
 	for(j=5;j>=0;j--){
 	  
 	  switch(j){
@@ -418,45 +355,45 @@ void print_tcp(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 			
 	}
 	}
-	printf("|");
+	printf("] ");
 	
 	
-	printf("%d|",sequence);
-	printf("%d|",tcp->th_ack);
+	printf("seq:%lu ",sequence);
+	printf("ack:%lu ",tcp->th_ack);
 	
-	printf("%d|",tcp->th_sum);
-	printf("%d",sizeOfpayload);
+	printf("chk:%d ",tcp->th_sum);
+	printf("len:%d ",sizeOfpayload);
 	printf("\n");
-	
+	printf("\n");
 	
 	i++;
 return;	
 
 	
 }
-void print_udp(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet,char * protocol,const struct Ip *ip,FILE *f){
+void print_udp(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet,char * protocol,const struct Ip *ip){
 	struct udphdr *udph = (struct udphdr*)(packet+SIZE_ETHERNET+IP_HL(ip));
 	int sizeOfip = IP_HL(ip)*4;
 	int sizeOfUdp=8;
-	print_IP(ip,f,protocol);
+	print_IP(ip,protocol);
 	
 	int sizeOfpayload = ntohs(ip->ip_len) - (sizeOfip + sizeOfUdp);
 	const char * payload = (u_char *)(packet + SIZE_ETHERNET + sizeOfip + sizeOfUdp);
-  	printf("%d|", ntohs(udph->source));
-        printf("%d|" , ntohs(udph->dest));
-    	printf("%d|" , ntohs(udph->check));
-	printf("%d|" , ntohs(udph->len));
+  	printf("Src:%d ", ntohs(udph->source));
+        printf("Dst:%d " , ntohs(udph->dest));
+    	printf("chk:%d " , ntohs(udph->check));
+	printf("len:%d " , ntohs(udph->len));
 	
 	
 	printf("\n");
-	
+	printf("\n");
 	
 	
 }
-void printARP(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet,FILE *f,const struct ether_header *ethernet,const struct Arphdr *arp){
+void printARP(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet,const struct ether_header *ethernet,const struct Arphdr *arp){
 	
 	
-	printf("ARP|");
+	printf("ARP ");
 	//printf("SAdd%s ",ether_ntoa((const struct ether_addr *)&ethernet->ether_shost));
 	//printf("dAdd%s ",ether_ntoa((const struct ether_addr *)&ethernet->ether_dhost));
 	
@@ -467,49 +404,49 @@ void printARP(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet,
 	//ARP reply ARP|2|192.168.136.128|00:0c:29:5d:c1:ce|192.168.136.128
 
 	switch(ntohs(arp->opc)){
-		case 1:printf("%d|",ntohs(arp->opc));
+		case 1:printf("opc:%d ",ntohs(arp->opc));
 			int i=0;
-			//printf("dAdd=");			
+			printf("Dst:");			
 			for(i=0;i<4;i++){
 				if(i!=3)
 					printf("%d.",arp->tpa[i]);
 				else
-					printf("%d",arp->tpa[i]);
+					printf("%d ",arp->tpa[i]);
 					
 			}
-			printf("|");
+			printf(" Src:");
 			for(i=0;i<4;i++){
 				if(i!=3)
 					printf("%d.",arp->spa[i]);	
 				else
 					printf("%d",arp->spa[i]);	
 			}
-			//printf("\n");
+			printf("\n");
 			break;	
-		case 2:printf("%d|",ntohs(arp->opc));
+		case 2:printf("opc:%d ",ntohs(arp->opc));
 			
-			//printf("dAdd=");			
+			printf("Src:");			
 			for(i=0;i<4;i++){
 				if(i!=3)
 					printf("%d.",arp->tpa[i]);
 				else
 					printf("%d",arp->tpa[i]);		
 			}
-			printf("|");
+			printf(" SMac:");
 			for(i=0;i<6;i++){
 				if(i!=5)
 					printf("%02x:",arp->tha[i]);	
 				else
 					printf("%02x",arp->tha[i]);		
 			}
-			printf("|");
+			printf(" Dst:");
 			for(i=0;i<4;i++){
 				if(i!=3)
 					printf("%d.",arp->spa[i]);	
 				else
 					printf("%d",arp->spa[i]);	
 			}
-			//printf("\n");
+			printf("\n");
 			break;	
 		       
 
@@ -521,7 +458,7 @@ void printARP(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet,
 
 void print_dns(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet,char * protocol,const struct Ip *ip,const struct Dns *dns){
 	
-		// Dns protocol :
+	// Dns protocol :
 	// Ethernet >> IP >> UDP >> DNS
 	// If port = UDP 53
 	// 
@@ -539,7 +476,7 @@ void print_dns(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 		/* compute UDP payload  offset */
 		payload= (u_char *)(packet + SIZE_ETHERNET + sizeOfip + SIZE_UDP+SIZE_DNS);
 		sizeOfPayload= ntohs(ip->ip_len)-(sizeOfip+SIZE_UDP+SIZE_DNS);
-		//printHexAsciiValueOfPayload(payload,sizeOfPayload);    <--------------------------uncomment here to read the packet payload
+		//printHexAsciiValueOfPayload(payload,sizeOfPayload);   // <--------------------------uncomment here to read the packet payload
 		temp=payload;
 		
 	}
@@ -547,14 +484,16 @@ void print_dns(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 		tcp = (struct Tcp*)(packet + SIZE_ETHERNET + sizeOfip);
 		int sizeOftcp = TH_OFF(tcp)*4;
 		payload= (u_char *)(packet + SIZE_ETHERNET + sizeOfip + SIZE_UDP+sizeOftcp);
+		sizeOfPayload= ntohs(ip->ip_len)-(sizeOfip+sizeOftcp+SIZE_DNS);
 		temp=payload;
 
 	}
-
-	printf("IP|");
-	printf("DNS|");
-	printf("%s|",inet_ntoa(ip->ip_src));
-	printf("%s|",inet_ntoa(ip->ip_dst));
+	//printf("DNs ANs record =%d\n",dns->dns_ancount);
+	// print DNS items
+	printf("IP ");
+	printf("DNS ");
+	printf("Src:%s ",inet_ntoa(ip->ip_src));
+	printf("Dst:%s ",inet_ntoa(ip->ip_dst));
 	
 	
 	if(dns->dns_qr==1){
@@ -569,25 +508,26 @@ bitmasking them out. */
 		int l=0;
 		unsigned char buffer[sizeOfPayload*2+1];
 		switch(dns->dns_opcode){
-			case DNS_SQ: printf("Standard Query Response");
+			case DNS_SQ: printf("[Standard Query Response]");
 				     	
 				     
 				break;
-			case DNS_IQ: printf("Inverse Query Response");
+			case DNS_IQ: printf("[Inverse Query Response]");
 				break;
-			case DNS_SR: printf("Status Request Response");
+			case DNS_SR: printf("[Status Request Response]");
 				break;	
-			case DNS_NOT: printf("Notify");
+			case DNS_NOT: printf("[Notify]");
 				break;
-			case DNS_UPT: printf("Update");
+			case DNS_UPT: printf("[Update]");
 				break;
-			default: printf("Opcode"); /* If doesnt match anything */
+			default: printf("[Opcode]"); /* If doesnt match anything */
 		}
-		printf("|");
-		printf("%02x|",dns->dns_id);
+		printf(" ");
+		printf("id:%02x ",dns->dns_id);
 		int z=0,i=0;
 		//print of the question send to dns server , the website name and question type eg 			A=IPV4 
 		//find the payload by add all the header together and print the payload out.
+		printf("Ans:");
 		while(*temp!=0){
 			z=*temp	;
 			for(i=0;i<z;i++){
@@ -602,7 +542,7 @@ bitmasking them out. */
 			temp++;	
 
 		}
-		printf("|");		
+		printf(" ");		
 		//this function is to point the pointer to the end of the name section of dns replies. Name are like www.google.com . Name are of variable size like www.youtube.com and www.google.come
 		//have different sizes this will make sure the pointer point to the end of the name section.
 		while(offset!=0){
@@ -610,7 +550,7 @@ bitmasking them out. */
 				offset=0;
 				temp++;
 			}
-			else{
+			else {				
 				temp++;
 				l++;
 			}
@@ -636,7 +576,7 @@ bitmasking them out. */
 		// Type 2byte class 2 bytes TTL 4 bytes , RLength 2 bytes
 		// since the temp below is around after type segment after temp ++ we only need to add 2 +4+2 to reach the resource data.
 		switch(*temp){
-			case 1: printf("A|");
+			case 1: printf(" [IPV4] ");
 				temp++;
 				temp=temp+2+4+2;
 				
@@ -660,35 +600,67 @@ bitmasking them out. */
 				
 			
 				break;
-			case 2: printf("NS|");
-				break;
-			case 5:printf("CNAME|");
+			
+			case 5:printf("[CNAME]");
 				temp=temp+9;
-				while(*temp!=0){
+				
+				while(*temp!=192){
 					z=*temp	;
-				for(i=0;i<z;i++){
 					temp++;
 					if(isprint(*temp)){
 						printf("%c",*temp);			
 					}			
 
-				}
-				if(*(temp+1)!=0)
-					printf(".");
-				temp++;	
+					
 
 				}
-				temp=temp+3;	
+				while(*temp!=0){
+					temp++;
+
+				}
+				temp++;
+				printf(" ");
+				if(*temp==1){
+					printf("[IPV4]");
+					temp=temp+9;
+					for(ll=0;ll<4;ll++){
+						if(ll!=3){
+							printf("%d.",*temp);
+					
+						}
+						else
+							printf("%d",*temp);	
+					    
+					temp++;
+					
+					}
+					
+				}
+				else if (*temp==28){
+
+					printf("[IPV6]");
+					temp=temp+9;
+					int o=0;
+					for(ll=0;ll<16;ll++){
+					if(o!=2){
+						printf("%02x",*temp);
+						o++;
+					}
+					else{
+											
+							printf(":");
+						o=1;
+						printf("%02x",*temp);
+					}	
+
+					
+					temp++;
+
+				}
+				}	
 				break;
-			case 6:printf("SOA|");
-				break;
-			case 12:printf("PTR|");
-				break;
-			case 15:printf("MX|");
-				break;
-			case 16:printf("TXT|");
-				break;
-			case 28:printf("AAAA|");
+			
+			case 28:printf("[IPV6]");
 				temp++;
 				
 				temp=temp+8;
@@ -710,18 +682,7 @@ bitmasking them out. */
 
 				}
 				break;
-			case 33:printf("SRV|");
-				break;
-			case 41:printf("OPT|");
-				break;
-			case 44:printf("SSHFP|");
-				break;
-			case 99:printf("SPF|");
-				break;
-			case 252:printf("AXFR|");
-				break;
-			case 255:printf("ALL|");
-				break;
+		
 
 		}
 			//dnsAncount--;
@@ -736,26 +697,27 @@ bitmasking them out. */
 	}
 	else{
 		switch(dns->dns_opcode){
-			case DNS_SQ: printf("Standard Query");
+			case DNS_SQ: printf("[Standard Query]");
 				     	
 				     
 				break;
-			case DNS_IQ: printf("Inverse Query");
+			case DNS_IQ: printf("[Inverse Query]");
 				break;
-			case DNS_SR: printf("Status Request");
+			case DNS_SR: printf("[Status Request]");
 				break;	
-			case DNS_NOT: printf("Notify");
+			case DNS_NOT: printf("[Notify]");
 				break;
-			case DNS_UPT: printf("Update");
+			case DNS_UPT: printf("[Update]");
 				break;
-			default: printf("Opcode"); /* If doesnt match anything */
+			default: printf("[Opcode]"); /* If doesnt match anything */
 		}
-		printf("|");
-		printf("%02x|",dns->dns_id);
+		printf(" ");
+		printf("id:%02x ",dns->dns_id);
 		int offset=0;
 		int z=0,i=0;
 		//print of the question send to dns server , the website name and question type eg A=IPV4 
 		//find the payload by add all the header together and print the payload out.
+		printf("Qn:");
 		while(*temp!=0){
 			z=*temp	;
 			for(i=0;i<z;i++){
@@ -770,38 +732,38 @@ bitmasking them out. */
 			temp++;	
 
 		}
-		printf("|");
+		printf(" ");
 
 		while(*temp==0)
 			temp++;
 		switch(*temp){
-			case 1: printf("A|");
+			case 1: printf("[IPV4]");
 				break;
-			case 2: printf("NS|");
+			case 2: printf("[NS]");
 				break;
-			case 5:printf("CNAME|");
+			case 5:printf("[CNAME]");
 				break;
-			case 6:printf("SOA|");
+			case 6:printf("[SOA]");
 				break;
-			case 12:printf("PTR|");
+			case 12:printf("[PTR|]");
 				break;
-			case 15:printf("MX|");
+			case 15:printf("[MX]");
 				break;
-			case 16:printf("TXT|");
+			case 16:printf("[TXT]");
 				break;
-			case 28:printf("AAAA|");
+			case 28:printf("[IPV6]");
 				break;
-			case 33:printf("SRV|");
+			case 33:printf("[SRV]");
 				break;
-			case 41:printf("OPT|");
+			case 41:printf("[OPT]");
 				break;
-			case 44:printf("SSHFP|");
+			case 44:printf("[SSHFP]");
 				break;
-			case 99:printf("SPF|");
+			case 99:printf("[SPF]");
 				break;
-			case 252:printf("AXFR|");
+			case 252:printf("[AXFR]");
 				break;
-			case 255:printf("ALL|");
+			case 255:printf("[ALL]");
 				break;
 
 		}
@@ -810,6 +772,7 @@ bitmasking them out. */
 	}
 	
 	
+	printf("\n");
 	printf("\n");
 	
 	
@@ -825,17 +788,7 @@ bitmasking them out. */
 void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet){
 	static int count = 1;   
  	static int i =0;              
-	FILE *f;
-	if(i==0)
-		
-		f = fopen("output.txt", "w");
-	else
-		f=fopen("output.txt", "a");
-	if (f == NULL)
-	{
-	 	printf("Error opening file!\n");	
-    		exit(1);
-	}
+	
 	const struct ether_header *ethernet;  	/* The ethernet header [1] */
 	const struct Ip *ip;              		/* The IP header */
 	const struct Tcp *tcp;            		/* The TCP header */
@@ -868,7 +821,7 @@ void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	//determine if a packet is of type ARP or IP
 	if (ntohs (ethernet->ether_type) == ETHERTYPE_ARP){
 		arp =(struct Arphdr *)(packet+14);
-		printARP(args,hdr,packet,f,ethernet,arp);
+		printARP(args,hdr,packet,ethernet,arp);
 	}
 	
 	else if (ntohs (ethernet->ether_type) == ETHERTYPE_IP){
@@ -876,7 +829,7 @@ void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 	switch(ip->ip_p) {
 		case IPPROTO_TCP:
 			protocol="TCP";
-			
+			//printf(" Protocol :%s\n",protocol);
 			
 			sizeOfip = IP_HL(ip)*4;
 			tcp = (struct Tcp*)(packet + SIZE_ETHERNET + sizeOfip);
@@ -888,12 +841,12 @@ void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 				dns = (struct Dns*)(packet + SIZE_ETHERNET + sizeOfip + sizeOftcp);
 				print_dns(args,hdr,packet,protocol,ip,dns);
 			}else{// Else
-				print_tcp(args,hdr,packet,protocol,ip,f);
+				print_tcp(args,hdr,packet,protocol,ip);
 			}
 			break;
 		case IPPROTO_UDP:
 			protocol="UDP";
-			
+			//printf("   Protocol: %s\n",protocol);
 			sizeOfip = IP_HL(ip)*4;
 			udph = (struct udphdr*)(packet + SIZE_ETHERNET + sizeOfip);
 			
@@ -904,7 +857,7 @@ void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 				dns = (struct Dns*)(packet + SIZE_ETHERNET + sizeOfip + SIZE_UDP);
 				print_dns(args,hdr,packet,protocol,ip,dns);
 			}else{// else print_udp
-				print_udp(args,hdr,packet,protocol,ip,f);
+				print_udp(args,hdr,packet,protocol,ip);
 			}
 			
 			break;
@@ -915,20 +868,16 @@ void getPacket(u_char *args, const struct pcap_pkthdr *hdr, const u_char *packet
 			//printf("   Protocol: IP\n");
 			break;
 		default:
-			printf("   Protocol: unknown\n");
-			fprintf(f,"Protocol unknown\n");
+			
 			break;
 	}
 	
 	}
 	
 	
-	fclose(f);	
 	
-	//printf("   Src port: %d\n", ntohs(tcp->th_sport));
-	//printf("   Dst port: %d\n", ntohs(tcp->th_dport));
 	
-	/* compute tcp payload  offset */
+
 	i++;	
 	
 }
@@ -951,12 +900,10 @@ void sniffPacket(char * interface){
 struct bpf_program filter;
   printf("Start this program\n"); 
   
-  //dev=pcap_lookupdev(errbuf);
   dev=interface;
   printf("Sniffing on interface :%s\n",dev);
   
-  //open the sniffing session
-  //handler= pcap_open_live(dev,BUFSIZ,1,1000,errbuf);
+
     handler=pcap_create(dev,errbuf);
     pcap_set_promisc(handler,1);
     pcap_activate(handler);
@@ -966,29 +913,17 @@ struct bpf_program filter;
         exit(1);
     }
  	if (pcap_datalink(handler) != DLT_EN10MB) {
-		fprintf(stderr, "%s is not an Ethernet\n", dev);
+		
 		exit(EXIT_FAILURE);
 	}
 	if (pcap_lookupnet(dev, &netAdd, &maskAdd,errbuf) == -1) {
-		printf("Couldn't get netmask for device %s: %s\n",
-		    dev, errbuf);
+		
 		netAdd = 0;
 		maskAdd = 0;
 	}
-/*if (pcap_compile(handler, &filter, filter_exp, 0, netAdd) == -1) {
-		fprintf(stderr, "Couldn't parse filter %s: %s\n",
-		    filter_exp, pcap_geterr(handler));
-		exit(EXIT_FAILURE);
-	}
-	/* apply the compiled filter 
-	if (pcap_setfilter(handler, &filter) == -1) {
-		fprintf(stderr, "Couldn't install filter %s: %s\n",
-		    filter_exp, pcap_geterr(handler));
-		exit(EXIT_FAILURE);
-	}
-*/
+
  
-  pcap_loop(handler,0,getPacket,NULL);
+ 	pcap_loop(handler,0,getPacket,NULL);
 	pcap_freecode(&filter);
 	pcap_close(handler);
 
@@ -1007,21 +942,21 @@ void writeToPcapFile(char *interface ,  char * filename){
   
 
 	
-  printf("Start this program\n"); 
+  
+
+  dev=interface;
   
  
-  dev=interface;
  
-  //handler= pcap_open_live(dev,BUFSIZ,1,1000,errbuf);
     handler=pcap_create(dev,errbuf);
     pcap_set_promisc(handler,1);
     pcap_activate(handler);
 
     //pcap_dump_open is a libpcap function that open a file to which to write packets
-    if ((pcapfile = pcap_dump_open(handler, filename)) == NULL) {
+  if ((pcapfile = pcap_dump_open(handler, filename)) == NULL) {
   	  fprintf(stderr, "Error from pcap_dump_open(): %s\n", pcap_geterr(handler)); 
     	  exit(1);
-    }
+  }
 
   if ((pcap_loop(handler, 0, pcap_dump, (u_char *)pcapfile)) != 0) {
     	   fprintf(stderr, "Error from pcap_loop(): %s\n", pcap_geterr(handler)); 
@@ -1049,16 +984,13 @@ int main(int argc, char **argv)
 	}
 	// -w meaning write to pcap file
 	else if(strcmp(argv[1],"-w")==0) { 
-		strcpy(interface,"eth0");
+		
 		filename=argv[2];
+		strcpy(interface,argv[4]);
 		writeToPcapFile(interface,filename);
 
 	}
-	else if (strcmp(argv[1],"-f")==0) { 
 	
-		
-	}
-	//printf("interface : %s",interface);	
-	//sniffPacket(interface);
+	
   
 }
