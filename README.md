@@ -1,17 +1,24 @@
-"# pcbin" 
+"# pcbin/pcmon" 
 -
--pcbin is compiled on ARM architecture. Tested and no problems was found
+-pcbin and pcmon is compiled on ARM architecture. Tested and no problems was found
 -
--To compile pc for linux
--gcc packetSniffer.c -o pc -lpcap
--sudo ./pc sniff
+-To compile pcbin for linux
+-gcc pcbin.c -o pcbin -lpcap
+-sudo ./pcbin -i interface to sniff packet 
+-sudo  ./pcbin -w filename.pcap -i interface(eth0/wlan0) to write to pcap
+-pcbin work for all rooted phones
+-pcmon only works for NIC card that supports monitor mode and must be rooted
 
-recently updated packetSniffer.c  has the following features
-1)output.txt is more organized  
-2) able to sniff UDP and TCP /IP packet 
+pcbin capabilities
+- able to sniff UDP and TCP /IP packet 
+-DNS packet
+-ARP packet
 
-future updates
-1) working on command line  so program will act like tcpdump.
+pcmon capabilities
+- sniff in monitor mode using radiotap header
+-If the radiotap header length is not 40 , The signal strength signal noise and channel noise might be wrong 
+
+
 
 Download libpcap-1.8.1  using the following steps/
 
