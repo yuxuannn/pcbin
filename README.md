@@ -23,8 +23,8 @@ Configuring the libpcap file   /
  ./configure --prefix=/usr --host=arm-linux-gnueabi --with-pcap=linux   /
  make   /
  sudo make install  /
- arm-linux-gnueabi-gcc packetSniffer.c -static -s -o pcbin -lpcap -L/home/vmw_ubuntu/Desktop/libpcap-1.8.1
- 
+ arm-linux-gnueabi-gcc pcbin.c -static -s -o pcbin -lpcap -L/home/vmw_ubuntu/Desktop/libpcap-1.8.1
+ /to compile for pcmon >> arm-linux-gnueabi-gcc pcmon.c -static -s -o pcmon -lpcap -lm -L/home/vmw_ubuntu/Desktop/libpcap-1.8.1
  added new function  writeToPcapFile(). Able to write raw packet in to pcap file
  To compile type sudo ./pcbin -w filename
 
