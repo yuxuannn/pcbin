@@ -227,9 +227,9 @@ void handleFrames(const u_char *temp,int type){    //function to print out the d
 			temp++;
 		}
 		if(type==0)
-			printf("Dst:");
+			printf(" Dst:");
 		else if(type==1)
-			printf("BSSID:");
+			printf(" BSSID:");
 		i =0;	
 		for(i=0;i<6;i++){
 			if(i<5)		
@@ -241,9 +241,9 @@ void handleFrames(const u_char *temp,int type){    //function to print out the d
 		}
 		printf(" ");
 		if(type==0)
-			printf("Src:");
+			printf(" Src:");
 		else if(type==1)
-			printf("STA:");
+			printf(" STA:");
 			
 		for(i=0;i<6;i++){
 			if(i<5)		
@@ -255,9 +255,9 @@ void handleFrames(const u_char *temp,int type){    //function to print out the d
 		}
 		printf(" ");
 		if(type==0)
-			printf("BSSID:");
+			printf(" BSSID:");
 		else if (type==1)
-			printf("Dst:");
+			printf(" Dst:");
 			
 		for(i=0;i<6;i++){
 			if(i<5)		
@@ -304,7 +304,7 @@ void handleFrames(const u_char *temp,int type){    //function to print out the d
 			j++;
 		
 		}
-		printf("SN:%d",dec);
+		printf(" SequenceNo:%d",dec);
 		
 
 }
@@ -372,8 +372,8 @@ void handleControlFrames(const u_char  *temp){
 			j++;
 		
 		}
-		printf("SN:%d",dec);
-	
+		printf(" SequenceNo:%d",dec);
+
 	
 
 
@@ -396,140 +396,185 @@ void pcapHandler(u_char *args, const struct pcap_pkthdr *header, const u_char *p
 	printf("Protocol=802.11 ");
 	channel=packet+18;
 	int cFreq=channel[1]*256+channel[0];
-	printf("CFreq>%dMHZ ",cFreq);
+	printf(" CFreq= %dMHZ ",cFreq);
 	rss=packet+22;
 	
 	int Rss=rss[0]-256;                              //Antenna signal strength
 	int Rsn=rss[1]-256;				 //Antenna signal noise
-	printf("Rss>%d ",Rss);
-	printf("Rsn>%d ",Rsn);
+	printf(" RSS= %d ",Rss);
+	printf(" RSN= %d ",Rsn);
 	for(i =0; i<offset;i++){
 		temp++;
 
 	}
 	
+	int binaryArr[8];
+	int k =0;
+	int val =*temp;
+	for(k=0;k<8;k++){
+		binaryArr[k]=0;		
+	}
+	for(k=7;k>=0;k--){
+		binaryArr[k]=val%2;
+		val/=2;
+
 	
+	}
+	if(binaryArr[4]==1 && binaryArr[5]==0){ // this is data frame
+		if(*temp==136){
+			printf(" QOSData ");
+			handleFrames(temp,1);
+		}
+		else if (*temp==72){
+			printf(" Null ");
+			handleFrames(temp,1);
+		}
+		else if (*temp==200){
+			printf( "QOS_NUll ");
+			handleFrames(temp,1);
+
+		}
+
+	}
+	else if (binaryArr[4]==0&& binaryArr[5]==1){// this is control frame
+		if(*temp==180){
+			printf(" RequestToSend ");
+			temp++;
+			for(i=0;i<3;i++){
+				temp++;
+			}
+			printf("RAdd:");
+			printAddress(temp);
+			//printf(" \n");
+
+		}
+		else if (*temp==196){
+			printf(" ClearToSend ");
+			temp++;
+			for(i=0;i<3;i++){
+				temp++;
+			}
+			printf("RAdd:");
+			printAddress(temp);
+			//printf(" \n");
+
+
+
+		}
+		else if (*temp==212){
+			printf(" Acknowledgement ");
+			temp++;
+			int i =0;
+			for(i=0;i<3;i++){
+				temp++;
+			}
+			printf("RAdd:");
+			printAddress(temp);
+			//printf(" \n");
+			
+	
+
+		}
+		
+		else if (*temp==148){
+			printf (" BlkAck ");
+			handleControlFrames(temp);
+		}
+		else if (*temp==132){
+			printf(" BlkAckReq ");
+			handleControlFrames(temp);
+	
+	
+		}
+		else if(*temp==165){
+			printf(" PS_POLL ");
+			
+	
+		}
+		else if(*temp==228){
+			printf(" CF_END ");
+	
+	
+		}
+		else if(*temp==244){
+			printf(" CF-END_CF-ACK ");
+	
+		}//end of control frames
+
+	}
+	else if (binaryArr[4]==0&& binaryArr[5]==0){ //this is management frame
+		if (*temp==128){
+			printf(" BeaconFrame ");
+			handleFrames(temp,0);
+		
+			
+		}
+		
+		else if (*temp==64){// probe request is a subtype of management frames
+			printf(" ProbeRequest ");
+			handleFrames(temp,0);
+		}
+		else if(*temp==80){//probe response is a subtype of management frames
+			printf(" ProbeResponse ");
+			handleFrames(temp,0);
+
+		}
+		else if(*temp==0){
+			printf(" AssociationRequest ");
+			handleFrames(temp,0);
+	
+		}
+		else if(*temp==16){
+			printf(" AssociationResponse ");
+			handleFrames(temp,0);
+		}
+		else if (*temp==32){
+			printf(" ReAssociationRequest ");
+			handleFrames(temp,0);
+	
+		}
+		else if(*temp==48){
+			printf(" ReAssociationResponse ");
+			handleFrames(temp,0);
+		}
+		else if(*temp==160){
+			printf(" Disassociation ");
+			handleFrames(temp,0);
+		
+		}
+		else if(*temp==176){
+			printf("Authentication ");
+			handleFrames(temp,0);
+	
+		}
+		else if (*temp==192){
+			printf("Deauthentication ");
+			handleFrames(temp,0);
+	
+		}
+		else if (*temp==208){
+
+			printf(" Action ");
+			handleFrames(temp,0);
+		}
+		else if (*temp==224){
+			printf(" ActionNoAck ");
+			handleFrames(temp,0);
+
+
+		}
+		else if (*temp==144){
+			printf(" ATIM ");   // announcement Traffic Indication Message
+			handleFrames(temp,0);
+		}
+
+	}
+
+
 	
 	//printf("\n");
 
 	
-	
-	if(*temp==180){
-		printf("RTS ");
-		temp++;
-		for(i=0;i<3;i++){
-			temp++;
-		}
-		printf("RAdd:");
-		printAddress(temp);
-		//printf(" \n");
-
-	}
-	else if (*temp==196){
-		printf("CTS ");
-		temp++;
-		for(i=0;i<3;i++){
-			temp++;
-		}
-		printf("RAdd:");
-		printAddress(temp);
-		//printf(" \n");
-
-
-
-	}
-	else if (*temp==212){
-		printf("Ack ");
-		temp++;
-		int i =0;
-		for(i=0;i<3;i++){
-			temp++;
-		}
-		printf("RAdd:");
-		printAddress(temp);
-		//printf(" \n");
-		
-	
-
-	}
-	else if (*temp==72){
-		printf("Null ");
-		handleFrames(temp,1);
-	}
-	else if (*temp==148){
-		printf ("BlkAck ");
-		handleControlFrames(temp);
-	}
-	else if (*temp==132){
-		printf("BlkAckReq ");
-		handleControlFrames(temp);
-
-
-	}
-	else if (*temp==128){
-		printf("BeaconFrame ");
-		handleFrames(temp,0);
-		
-		
-	}
-	else if(*temp==136){
-		printf("DataFrame ");
-		handleFrames(temp,1);
-	}
-	else if (*temp==64){// probe request is a subtype of management frames
-		printf("ProbeRequest ");
-		handleFrames(temp,0);
-	}
-	else if(*temp==80){//probe response is a subtype of management frames
-		printf("ProbeResponse ");
-		handleFrames(temp,0);
-
-	}
-	else if(*temp==0){
-		printf("AssoRequest ");
-		handleFrames(temp,0);
-
-	}
-	else if(*temp==16){
-		printf("AssoResponse ");
-		handleFrames(temp,0);
-	}
-	else if (*temp==32){
-		printf("ReAssoRequest ");
-		handleFrames(temp,0);
-
-	}
-	else if(*temp==48){
-		printf("ReAssoResponse ");
-		handleFrames(temp,0);
-	}
-	else if(*temp==160){
-		printf("Disassociation ");
-		handleFrames(temp,0);
-	
-	}
-	else if(*temp==176){
-		printf("Authentication ");
-		handleFrames(temp,0);
-
-	}
-	else if (*temp==192){
-		printf("Deauthentication ");
-		handleFrames(temp,0);
-
-	}
-	else if (*temp==208){
-
-		printf("Action ");
-		handleFrames(temp,0);
-	}
-	else if (*temp==224){
-		printf("ActionNoAck ");
-		handleFrames(temp,0);
-
-
-	}
-
 
 
 	printf("\n");
