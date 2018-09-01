@@ -36,4 +36,7 @@ Configuring the libpcap file   /
  To compile type sudo ./pcbin -w filename
 
   
-
+# Credits
+TCPDump (Tcpdump, Libpcap)
+TCPDUMP and LIBPCAP are under a 3-clause BSD license (https://opensource.org/licenses/BSD-3-Clause)
+http://www.tcpdump.org/ 
